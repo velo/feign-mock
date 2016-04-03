@@ -15,6 +15,7 @@
  */
 package feign.mock;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
@@ -47,7 +48,20 @@ public class MockClient implements Client {
     }
 
     public MockClient ok(String url, InputStream input) throws IOException {
-        return add(url, Response.create(HTTP_OK, "Mocked", NO_HEADERS, input, input.available()));
+        return ok(url, toByte(input));
+    }
+
+    private byte[] toByte(InputStream input) throws IOException {
+        try (ByteArrayOutputStream os = new ByteArrayOutputStream();) {
+            byte[] buffer = new byte[0xFFFF];
+
+            for (int len; (len = input.read(buffer)) != -1;)
+                os.write(buffer, 0, len);
+
+            os.flush();
+
+            return os.toByteArray();
+        }
     }
 
     public MockClient ok(String url, String text) {
