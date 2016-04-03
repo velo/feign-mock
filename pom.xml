@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright (C) 2016 Marvin H Froeder (marvin@marvinformatics.com)
+    Copyright (C) 2016 Marvin Herman Froeder (marvin@marvinformatics.com)
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -20,14 +20,14 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.marvinformatics</groupId>
-  <artifactId>${name}</artifactId>
+  <artifactId>feign-mock</artifactId>
   <version>0.1-SNAPSHOT</version>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <coveralls.token></coveralls.token>
-    <java.version>1.8</java.version>
+    <coveralls.token>2eqQw3qR9E45S5WR17mvXpn8nI43Vmba8</coveralls.token>
+    <java.version>1.7</java.version>
   </properties>
 
   <dependencies></dependencies>
@@ -221,9 +221,9 @@
     </plugins>
   </build>
 
-  <url>https://github.com/${owner}/${name}/</url>
+  <url>https://github.com/velo/feign-mock/</url>
 
-  <inceptionYear>${year}</inceptionYear>
+  <inceptionYear>2016</inceptionYear>
 
   <licenses>
     <license>
@@ -243,9 +243,9 @@
   </developers>
 
   <scm>
-    <connection>scm:git:git@github.com:${owner}/${name}.git</connection>
-    <developerConnection>scm:git:git@github.com:${owner}/${name}.git</developerConnection>
-    <url>https://github.com/${owner}/${name}/</url>
+    <connection>scm:git:git@github.com:velo/feign-mock.git</connection>
+    <developerConnection>scm:git:git@github.com:velo/feign-mock.git</developerConnection>
+    <url>https://github.com/velo/feign-mock/</url>
   </scm>
 
   <distributionManagement>
