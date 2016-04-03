@@ -19,6 +19,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -26,6 +27,8 @@ import java.util.List;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
+
+import static feign.Util.toByteArray;
 
 import feign.Feign;
 import feign.FeignException;
@@ -38,6 +41,10 @@ public class MockClientTest {
     interface GitHub {
         @RequestLine("GET /repos/{owner}/{repo}/contributors")
         List<Contributor> contributors(@Param("owner") String owner, @Param("repo") String repo);
+
+        @RequestLine("GET /repos/{owner}/{repo}/contributors?client_id={client_id}")
+        List<Contributor> contributors(@Param("client_id") String clientId, @Param("owner") String owner,
+                @Param("repo") String repo);
 
         @RequestLine("PATCH /repos/{owner}/{repo}/contributors")
         List<Contributor> patchContributors(@Param("owner") String owner, @Param("repo") String repo);
@@ -53,10 +60,13 @@ public class MockClientTest {
     @Before
     public void setup() throws IOException {
         try (InputStream input = getClass().getResourceAsStream("/fixtures/contributors.json");) {
+            byte[] data = toByteArray(input);
             github = Feign.builder()
                     .decoder(new GsonDecoder())
                     .client(new MockClient()
-                            .ok(HttpMethod.GET, "mock:///repos/netflix/feign/contributors", input)
+                            .ok(HttpMethod.GET, "mock:///repos/netflix/feign/contributors", data)
+                            .ok(HttpMethod.GET, "mock:///repos/netflix/feign/contributors?client_id=55", "")
+                            .ok(HttpMethod.GET, "mock:///repos/netflix/feign/contributors?client_id=7 7", new ByteArrayInputStream(data))
                             .noContent(HttpMethod.PATCH, "mock:///repos/velo/feign-mock/contributors"))
                     .target(GitHub.class, "mock://");
         }
@@ -86,6 +96,12 @@ public class MockClientTest {
         } catch (FeignException e) {
             assertThat(e.getMessage(), Matchers.containsString("404"));
         }
+    }
+
+    @Test
+    public void paramsEncoding() {
+        List<Contributor> contributors = github.contributors("7 7", "netflix", "feign");
+        assertThat(contributors, hasSize(30));
     }
 
 }

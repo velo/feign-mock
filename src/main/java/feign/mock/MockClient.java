@@ -15,10 +15,12 @@
  */
 package feign.mock;
 
-import static com.google.common.io.ByteStreams.toByteArray;
+import static feign.Util.UTF_8;
+import static feign.Util.toByteArray;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URLDecoder;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,7 +42,8 @@ public class MockClient implements Client {
 
     @Override
     public Response execute(Request request, Options options) throws IOException {
-        RequestKey key = new RequestKey(HttpMethod.valueOf(request.method()), request.url());
+        RequestKey key = new RequestKey(HttpMethod.valueOf(request.method()),
+                URLDecoder.decode(request.url(), UTF_8.name()));
 
         if (responses.containsKey(key))
             return responses.get(key);
