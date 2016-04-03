@@ -15,17 +15,20 @@
  */
 package feign.mock;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
-import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 
 import feign.Feign;
+import feign.FeignException;
 import feign.Param;
 import feign.RequestLine;
 import feign.gson.GsonDecoder;
@@ -35,6 +38,9 @@ public class MockClientTest {
     interface GitHub {
         @RequestLine("GET /repos/{owner}/{repo}/contributors")
         List<Contributor> contributors(@Param("owner") String owner, @Param("repo") String repo);
+
+        @RequestLine("PATCH /repos/{owner}/{repo}/contributors")
+        List<Contributor> patchContributors(@Param("owner") String owner, @Param("repo") String repo);
     }
 
     static class Contributor {
@@ -49,15 +55,37 @@ public class MockClientTest {
         try (InputStream input = getClass().getResourceAsStream("/fixtures/contributors.json");) {
             github = Feign.builder()
                     .decoder(new GsonDecoder())
-                    .client(new MockClient().ok("mock:///repos/netflix/feign/contributors", input))
+                    .client(new MockClient()
+                            .ok(HttpMethod.GET, "mock:///repos/netflix/feign/contributors", input)
+                            .noContent(HttpMethod.PATCH, "mock:///repos/velo/feign-mock/contributors"))
                     .target(GitHub.class, "mock://");
         }
     }
 
     @Test
-    public void test() {
+    public void hitMock() {
         List<Contributor> contributors = github.contributors("netflix", "feign");
-        MatcherAssert.assertThat(contributors, hasSize(30));
+        assertThat(contributors, hasSize(30));
+    }
+
+    @Test
+    public void missMock() {
+        try {
+            github.contributors("velo", "feign-mock");
+            fail();
+        } catch (FeignException e) {
+            assertThat(e.getMessage(), Matchers.containsString("404"));
+        }
+    }
+
+    @Test
+    public void missHttpMethod() {
+        try {
+            github.patchContributors("netflix", "feign");
+            fail();
+        } catch (FeignException e) {
+            assertThat(e.getMessage(), Matchers.containsString("404"));
+        }
     }
 
 }
