@@ -17,10 +17,9 @@ package feign.mock;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-
-import com.google.common.io.ByteStreams;
 
 import feign.Client;
 import feign.Request;
@@ -28,6 +27,12 @@ import feign.Request.Options;
 import feign.Response;
 
 public class MockClient implements Client {
+
+    private static final HashMap<String, Collection<String>> NO_HEADERS = new HashMap<String, Collection<String>>();
+
+    private static final int HTTP_NO_CONTENT = 204;
+
+    private static final int HTTP_OK = 200;
 
     private final Map<String, Response> responses = new HashMap<>();
 
@@ -41,19 +46,23 @@ public class MockClient implements Client {
         return Response.create(404, "Not mocked", request.headers(), (byte[]) null);
     }
 
-    public MockClient add(String url, InputStream input) throws IOException {
-        return add(url, ByteStreams.toByteArray(input));
+    public MockClient ok(String url, InputStream input) throws IOException {
+        return add(url, Response.create(HTTP_OK, "Mocked", NO_HEADERS, input, input.available()));
     }
 
-    public MockClient add(String url, String text) {
-        return add(url, text.getBytes());
+    public MockClient ok(String url, String text) {
+        return ok(url, text.getBytes());
     }
 
-    private MockClient add(String url, byte[] data) {
-        return add(url, Response.create(200, "Not mocked", new HashMap<>(), data));
+    public MockClient noContent(String url) {
+        return add(url, Response.create(HTTP_NO_CONTENT, "Mocked", NO_HEADERS, new byte[0]));
     }
 
-    private MockClient add(String url, Response response) {
+    public MockClient ok(String url, byte[] data) {
+        return add(url, Response.create(HTTP_OK, "Mocked", NO_HEADERS, data));
+    }
+
+    public MockClient add(String url, Response response) {
         responses.put(url, response);
         return this;
     }
