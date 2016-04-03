@@ -21,7 +21,7 @@
 
   <groupId>com.marvinformatics.feign</groupId>
   <artifactId>feign-mock</artifactId>
-  <version>0.1-SNAPSHOT</version>
+  <version>0.1</version>
 
   <name>feign-mock</name>
   <description>An easy way to test https://github.com/Netflix/feign.  Since using feign most of the logic is store into annotations this helps to check if the annotations are right.</description>
