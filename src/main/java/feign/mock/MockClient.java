@@ -17,12 +17,16 @@ package feign.mock;
 
 import static feign.Util.UTF_8;
 import static feign.Util.toByteArray;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLDecoder;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import feign.Client;
@@ -39,14 +43,17 @@ public class MockClient implements Client {
     private static final int HTTP_OK = 200;
 
     private final Map<RequestKey, Response> responses = new HashMap<>();
-    private final Map<RequestKey, Request> requests = new HashMap<>();
+    private final Map<RequestKey, List<Request>> requests = new HashMap<>();
 
     @Override
     public Response execute(Request request, Options options) throws IOException {
         RequestKey key = new RequestKey(HttpMethod.valueOf(request.method()),
                 URLDecoder.decode(request.url(), UTF_8.name()));
 
-        requests.put(key, request);
+        if (requests.containsKey(key))
+            requests.get(key).add(request);
+        else
+            requests.put(key, new ArrayList<>(asList(request)));
 
         if (responses.containsKey(key))
             return responses.get(key);
@@ -75,12 +82,35 @@ public class MockClient implements Client {
         return this;
     }
 
-    public Request verify(HttpMethod method, String url) {
+    public Request verifyOne(HttpMethod method, String url) {
+        return verifyTimes(method, url, 1).get(0);
+    }
+
+    public List<Request> verifyTimes(final HttpMethod method, final String url, final int times) {
+        if (times < 0)
+            throw new IllegalArgumentException("times must be a non negative number");
+
+        if (times == 0) {
+            verifyNever(method, url);
+            return emptyList();
+        }
+
+        RequestKey key = new RequestKey(method, url);
+        if (!requests.containsKey(key))
+            throw new VerificationAssertionError("Wanted: '%s' but never invoked!", key);
+
+        List<Request> result = requests.get(key);
+        if (result.size() == times)
+            return result;
+
+        throw new VerificationAssertionError("Wanted: '%s' to be invoked: '%s' times but got: '%s'!",
+                key, times, result.size());
+    }
+
+    public void verifyNever(HttpMethod method, String url) {
         RequestKey key = new RequestKey(method, url);
         if (requests.containsKey(key))
-            return requests.get(key);
-
-        throw new AssertionError("Wanted: " + key + " but never invoked!");
+            throw new VerificationAssertionError("Do not wanted: '%s' but was invoked!", key);
     }
 
 }
