@@ -51,4 +51,9 @@ public class RequestKey {
         return true;
     }
 
+    @Override
+    public String toString() {
+        return "Request [" + method + ": " + url + "]";
+    }
+
 }

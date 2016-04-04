@@ -39,11 +39,14 @@ public class MockClient implements Client {
     private static final int HTTP_OK = 200;
 
     private final Map<RequestKey, Response> responses = new HashMap<>();
+    private final Map<RequestKey, Request> requests = new HashMap<>();
 
     @Override
     public Response execute(Request request, Options options) throws IOException {
         RequestKey key = new RequestKey(HttpMethod.valueOf(request.method()),
                 URLDecoder.decode(request.url(), UTF_8.name()));
+
+        requests.put(key, request);
 
         if (responses.containsKey(key))
             return responses.get(key);
@@ -70,6 +73,14 @@ public class MockClient implements Client {
     public MockClient add(HttpMethod method, String url, Response response) {
         responses.put(new RequestKey(method, url), response);
         return this;
+    }
+
+    public Request verify(HttpMethod method, String url) {
+        RequestKey key = new RequestKey(method, url);
+        if (requests.containsKey(key))
+            return requests.get(key);
+
+        throw new AssertionError("Wanted: " + key + " but never invoked!");
     }
 
 }
