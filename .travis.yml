@@ -3,6 +3,8 @@ language: java
 os:
   - linux
 jdk:
+  - openjdk7
+  - oraclejdk7
   - oraclejdk8
 
 install:
