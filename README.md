@@ -8,4 +8,44 @@
 [![Stars](https://img.shields.io/github/stars/velo/feign-mock.svg)](https://github.com/velo/feign-mock/stargazers)
 
 An easy way to test https://github.com/Netflix/feign.  Since using feign most of the logic is store into annotations this helps to check if the annotations are right.
-	
+
+Original article available https://velo.github.io/2016/06/05/Testing-feign-clients.html[here]
+
+If mocking feign clients is easy, testing the logic written in annotations is everything but!
+
+To check if you are parsing the request/response properly the only way it firing a real request.  Well, that doesn't seem to be a good path to unit (or even integration) test remote services.  Any IO change will affect test stability.
+
+That is why I create https://github.com/velo/feign-mock[feign-mock].
+
+With feign-mock you can using pre-loaded json strings or streams as content for your responses.  It also allow you to verify mock invokation and feign-mock will hit your annotations to make sure everything works.
+
+##### Example
+
+```
+  private GitHub github;
+  private MockClient mockClient;
+
+  @Before
+  public void setup() throws IOException {
+    mockClient = new MockClient()
+        .noContent(HttpMethod.PATCH, "/repos/velo/feign-mock/contributors");
+
+    github = Feign.builder()
+        .decoder(new GsonDecoder())
+        .client(mockClient)
+        .target(new MockTarget<>(GitHub.class));
+  }
+
+  @Test
+  public void missHttpMethod() {
+    List<Contributor> result = github.patchContributors("velo", "feign-mock");
+    assertThat(result, nullValue());
+    mockClient.verifyOne(HttpMethod.PATCH, "/repos/velo/feign-mock/contributors");
+  }
+```
+
+This simple test returns no content and verify if the url was trully invoked.
+
+On mock client, you can include all urls and methods you wanna mock.
+
+For a more compreensive example take a look at https://github.com/velo/feign-mock/blob/master/src/test/java/feign/mock/MockClientTest.java[MockClientTest].
