@@ -30,7 +30,7 @@ public class RequestKey {
     @Override
     public int hashCode() {
         final int prime = 31;
-        int result = 1;
+        int result = 7;
         result = prime * result + method.hashCode();
         return result;
     }
