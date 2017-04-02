@@ -32,19 +32,19 @@
     <coveralls.token>2eqQw3qR9E45S5WR17mvXpn8nI43Vmba8</coveralls.token>
 
     <java.version>1.7</java.version>
-    <feign.version>8.15.1</feign.version>
+    <feign.version>9.4.0</feign.version>
     <hamcrest.version>1.3</hamcrest.version>
   </properties>
 
   <dependencies>
     <dependency>
-      <groupId>com.netflix.feign</groupId>
+      <groupId>io.github.openfeign</groupId>
       <artifactId>feign-core</artifactId>
       <version>${feign.version}</version>
     </dependency>
 
     <dependency>
-      <groupId>com.netflix.feign</groupId>
+      <groupId>io.github.openfeign</groupId>
       <artifactId>feign-gson</artifactId>
       <version>${feign.version}</version>
       <scope>test</scope>

@@ -39,10 +39,10 @@ public class MockClient implements Client {
     private static final Map<String, Collection<String>> NO_HEADERS = new HashMap<String, Collection<String>>();
 
     private static final int HTTP_NO_CONTENT = 204;
-
     private static final int HTTP_OK = 200;
+    private static final int HTTP_NOT_FOUND = 404;
 
-    private final Map<RequestKey, Response> responses = new HashMap<>();
+    private final Map<RequestKey, Response.Builder> responses = new HashMap<>();
     private final Map<RequestKey, List<Request>> requests = new HashMap<>();
 
     @Override
@@ -56,9 +56,16 @@ public class MockClient implements Client {
             requests.put(key, new ArrayList<>(asList(request)));
 
         if (responses.containsKey(key))
-            return responses.get(key);
+            return responses.get(key)
+                    .request(request)
+                    .build();
 
-        return Response.create(404, "Not mocked", request.headers(), (byte[]) null);
+        return Response.builder()
+                .status(HTTP_NOT_FOUND)
+                .reason("Not mocker")
+                .headers(request.headers())
+                .request(request)
+                .build();
     }
 
     public MockClient ok(HttpMethod method, String url, InputStream input) throws IOException {
@@ -70,14 +77,21 @@ public class MockClient implements Client {
     }
 
     public MockClient noContent(HttpMethod method, String url) {
-        return add(method, url, Response.create(HTTP_NO_CONTENT, "Mocked", NO_HEADERS, new byte[0]));
+        return add(method, url, Response.builder()
+                .status(HTTP_NO_CONTENT)
+                .reason("Mocked")
+                .headers(NO_HEADERS));
     }
 
     public MockClient ok(HttpMethod method, String url, byte[] data) {
-        return add(method, url, Response.create(HTTP_OK, "Mocked", NO_HEADERS, data));
+        return add(method, url, Response.builder()
+                .status(HTTP_OK)
+                .reason("Mocked")
+                .headers(NO_HEADERS)
+                .body(data));
     }
 
-    public MockClient add(HttpMethod method, String url, Response response) {
+    public MockClient add(HttpMethod method, String url, Response.Builder response) {
         responses.put(new RequestKey(method, url), response);
         return this;
     }

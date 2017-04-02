@@ -23,21 +23,19 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.fail;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
-
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 
-import feign.Body;
-import feign.Feign;
-import feign.FeignException;
-import feign.Param;
-import feign.Request;
-import feign.RequestLine;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Type;
+import java.util.List;
+
+import feign.*;
+import feign.codec.DecodeException;
+import feign.codec.Decoder;
 import feign.gson.GsonDecoder;
 
 public class MockClientTest {
@@ -64,6 +62,23 @@ public class MockClientTest {
         int contributions;
     }
 
+    class AssertionDecoder implements Decoder {
+
+        private final Decoder delegate;
+
+        public AssertionDecoder(Decoder delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Object decode(Response response, Type type) throws IOException, DecodeException, FeignException {
+            assertThat(response.request(), notNullValue());
+
+            return delegate.decode(response, type);
+        }
+
+    }
+
     private GitHub github;
     private MockClient mockClient;
 
@@ -73,7 +88,7 @@ public class MockClientTest {
             byte[] data = toByteArray(input);
             mockClient = new MockClient();
             github = Feign.builder()
-                    .decoder(new GsonDecoder())
+                    .decoder(new AssertionDecoder(new GsonDecoder()))
                     .client(mockClient
                             .ok(HttpMethod.GET, "/repos/netflix/feign/contributors", data)
                             .ok(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=55", "")
