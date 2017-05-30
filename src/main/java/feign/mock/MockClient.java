@@ -127,4 +127,8 @@ public class MockClient implements Client {
             throw new VerificationAssertionError("Do not wanted: '%s' but was invoked!", key);
     }
 
+    public void resetRequests() {
+        requests.clear();
+    }
+
 }
