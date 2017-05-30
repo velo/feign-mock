@@ -219,4 +219,18 @@ public class MockClientTest {
         assertThat(results, hasSize(3));
     }
 
+    @Test
+    public void resetRequests() {
+        mockClient.verifyNever(HttpMethod.POST, "/repos/netflix/feign/contributors");
+
+        github.create("netflix", "feign", "velo_at_github", "preposterous hacker");
+        Request result = mockClient.verifyOne(HttpMethod.POST, "/repos/netflix/feign/contributors");
+        assertThat(result, notNullValue());
+
+        mockClient.resetRequests();
+
+        mockClient.verifyNever(HttpMethod.POST, "/repos/netflix/feign/contributors");
+
+    }
+
 }
