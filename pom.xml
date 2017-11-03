@@ -161,7 +161,7 @@
       <plugin>
         <groupId>com.marvinformatics.formatter</groupId>
         <artifactId>formatter-maven-plugin</artifactId>
-        <version>1.6.0.RC4</version>
+        <version>1.9.2</version>
         <configuration>
           <sourceDirectory>${project.basedir}</sourceDirectory>
           <excludes>
@@ -170,7 +170,6 @@
           </excludes>
           <lineEnding>LF</lineEnding>
           <configFile>${project.basedir}/src/config/eclipse/formatter/java.xml</configFile>
-          <configJsFile>${project.basedir}/src/config/eclipse/formatter/javascript.xml</configJsFile>
         </configuration>
         <dependencies>
           <dependency>
