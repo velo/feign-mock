@@ -29,7 +29,75 @@ import feign.Util;
 
 public class RequestKey {
 
-  public static class Builder {
+    public static class Builder {
+
+        private HttpMethod method;
+
+        private String url;
+
+        private Map<String, Collection<String>> headers;
+
+        private Charset charset;
+
+        private byte[] body;
+
+        private Builder(HttpMethod method, String url) {
+            this.method = method;
+            this.url = url;
+        }
+
+        public Builder headers(Map<String, Collection<String>> headers) {
+            this.headers = headers;
+            return this;
+        }
+
+        public Builder charset(Charset charset) {
+            this.charset = charset;
+            return this;
+        }
+
+        public Builder body(String body) {
+            return body(body.getBytes(StandardCharsets.UTF_8));
+        }
+
+        public Builder body(byte[] body) {
+            this.body = body;
+            return this;
+        }
+
+        public RequestKey build() {
+            RequestKey requestKey = new RequestKey();
+            requestKey.method = method;
+            requestKey.url = url;
+            requestKey.headers = headers;
+            requestKey.charset = charset;
+            requestKey.body = body;
+            return requestKey;
+        }
+
+    }
+
+    public static Builder builder(HttpMethod method, String url) {
+        return new Builder(method, url);
+    }
+
+    public static RequestKey create(Request request) {
+        RequestKey requestKey = new RequestKey();
+        requestKey.method = HttpMethod.valueOf(request.method());
+        requestKey.url = buildUrl(request);
+        requestKey.headers = request.headers();
+        requestKey.charset = request.charset();
+        requestKey.body = request.body();
+        return requestKey;
+    }
+
+    private static String buildUrl(Request request) {
+        try {
+            return URLDecoder.decode(request.url(), Util.UTF_8.name());
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     private HttpMethod method;
 
@@ -41,132 +109,64 @@ public class RequestKey {
 
     private byte[] body;
 
-    private Builder(HttpMethod method, String url) {
-      this.method = method;
-      this.url = url;
+    private RequestKey() {
     }
 
-    public Builder headers(Map<String, Collection<String>> headers) {
-      this.headers = headers;
-      return this;
+    public HttpMethod getMethod() {
+        return method;
     }
 
-    public Builder charset(Charset charset) {
-      this.charset = charset;
-      return this;
+    public String getUrl() {
+        return url;
     }
 
-    public Builder body(String body) {
-      return body(body.getBytes(StandardCharsets.UTF_8));
+    public Map<String, Collection<String>> getHeaders() {
+        return headers;
     }
 
-    public Builder body(byte[] body) {
-      this.body = body;
-      return this;
+    public Charset getCharset() {
+        return charset;
     }
 
-    public RequestKey build() {
-      RequestKey requestKey = new RequestKey();
-      requestKey.method = method;
-      requestKey.url = url;
-      requestKey.headers = headers;
-      requestKey.charset = charset;
-      requestKey.body = body;
-      return requestKey;
+    public byte[] getBody() {
+        return body;
     }
 
-  }
-
-  public static Builder builder(HttpMethod method, String url) {
-    return new Builder(method, url);
-  }
-
-  public static RequestKey create(Request request) {
-    RequestKey requestKey = new RequestKey();
-    requestKey.method = HttpMethod.valueOf(request.method());
-    requestKey.url = buildUrl(request);
-    requestKey.headers = request.headers();
-    requestKey.charset = request.charset();
-    requestKey.body = request.body();
-    return requestKey;
-  }
-
-  private static String buildUrl(Request request) {
-    try {
-      return URLDecoder.decode(request.url(), Util.UTF_8.name());
-    } catch (UnsupportedEncodingException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private HttpMethod method;
-
-  private String url;
-
-  private Map<String, Collection<String>> headers;
-
-  private Charset charset;
-
-  private byte[] body;
-
-  private RequestKey() {
-  }
-
-  public HttpMethod getMethod() {
-    return method;
-  }
-
-  public String getUrl() {
-    return url;
-  }
-
-  public Map<String, Collection<String>> getHeaders() {
-    return headers;
-  }
-
-  public Charset getCharset() {
-    return charset;
-  }
-
-  public byte[] getBody() {
-    return body;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(method, url);
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
+    @Override
+    public int hashCode() {
+        return Objects.hash(method, url);
     }
 
-    RequestKey other = (RequestKey) obj;
-    return Objects.equals(other.method, method) && Objects.equals(other.url, url);
-  }
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
 
-  public boolean equalsExtended(Object obj) {
-    if (equals(obj)) {
-      RequestKey other = (RequestKey) obj;
-      boolean headersEqual = other.headers == null || headers == null || Objects.equals(other.headers, headers);
-      boolean charsetEqual = other.charset == null || charset == null || Objects.equals(other.charset, charset);
-      boolean bodyEqual = other.body == null || body == null || Arrays.equals(other.body, body);
-      return headersEqual && charsetEqual && bodyEqual;
+        RequestKey other = (RequestKey) obj;
+        return Objects.equals(other.method, method) && Objects.equals(other.url, url);
     }
-    return false;
-  }
 
-  @Override
-  public String toString() {
-    return String.format("Request [%s %s: %s headers and %s]",
-        method, url,
-        headers == null ? "without" : "with " + headers.size(),
-        charset == null ? "no charset" : "charset " + charset);
-  }
+    public boolean equalsExtended(Object obj) {
+        if (equals(obj)) {
+            RequestKey other = (RequestKey) obj;
+            boolean headersEqual = other.headers == null || headers == null || Objects.equals(other.headers, headers);
+            boolean charsetEqual = other.charset == null || charset == null || Objects.equals(other.charset, charset);
+            boolean bodyEqual = other.body == null || body == null || Arrays.equals(other.body, body);
+            return headersEqual && charsetEqual && bodyEqual;
+        }
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Request [%s %s: %s headers and %s]",
+                method, url,
+                headers == null ? "without" : "with " + headers.size(),
+                charset == null ? "no charset" : "charset " + charset);
+    }
 
 }

@@ -49,282 +49,282 @@ import feign.gson.GsonDecoder;
 
 public class MockClientTest {
 
-  interface GitHub {
+    interface GitHub {
 
-    @RequestLine("GET /repos/{owner}/{repo}/contributors")
-    List<Contributor> contributors(@Param("owner") String owner, @Param("repo") String repo);
+        @RequestLine("GET /repos/{owner}/{repo}/contributors")
+        List<Contributor> contributors(@Param("owner") String owner, @Param("repo") String repo);
 
-    @RequestLine("GET /repos/{owner}/{repo}/contributors?client_id={client_id}")
-    List<Contributor> contributors(@Param("client_id") String clientId, @Param("owner") String owner,
-        @Param("repo") String repo);
+        @RequestLine("GET /repos/{owner}/{repo}/contributors?client_id={client_id}")
+        List<Contributor> contributors(@Param("client_id") String clientId, @Param("owner") String owner,
+                @Param("repo") String repo);
 
-    @RequestLine("PATCH /repos/{owner}/{repo}/contributors")
-    List<Contributor> patchContributors(@Param("owner") String owner, @Param("repo") String repo);
+        @RequestLine("PATCH /repos/{owner}/{repo}/contributors")
+        List<Contributor> patchContributors(@Param("owner") String owner, @Param("repo") String repo);
 
-    @RequestLine("POST /repos/{owner}/{repo}/contributors")
-    @Body("%7B\"login\":\"{login}\",\"type\":\"{type}\"%7D")
-    Contributor create(@Param("owner") String owner, @Param("repo") String repo, @Param("login") String login,
-        @Param("type") String type);
+        @RequestLine("POST /repos/{owner}/{repo}/contributors")
+        @Body("%7B\"login\":\"{login}\",\"type\":\"{type}\"%7D")
+        Contributor create(@Param("owner") String owner, @Param("repo") String repo, @Param("login") String login,
+                @Param("type") String type);
 
-  }
-
-  static class Contributor {
-
-    String login;
-
-    int contributions;
-
-  }
-
-  class AssertionDecoder implements Decoder {
-
-    private final Decoder delegate;
-
-    public AssertionDecoder(Decoder delegate) {
-      this.delegate = delegate;
     }
 
-    @Override
-    public Object decode(Response response, Type type) throws IOException, DecodeException, FeignException {
-      assertThat(response.request(), notNullValue());
+    static class Contributor {
 
-      return delegate.decode(response, type);
+        String login;
+
+        int contributions;
+
     }
 
-  }
+    class AssertionDecoder implements Decoder {
 
-  private GitHub github;
+        private final Decoder delegate;
 
-  private GitHub githubSequential;
+        public AssertionDecoder(Decoder delegate) {
+            this.delegate = delegate;
+        }
 
-  private MockClient mockClient;
+        @Override
+        public Object decode(Response response, Type type) throws IOException, DecodeException, FeignException {
+            assertThat(response.request(), notNullValue());
 
-  private MockClient mockClientSequential;
+            return delegate.decode(response, type);
+        }
 
-  @Before
-  public void setup() throws IOException {
-    try (InputStream input = getClass().getResourceAsStream("/fixtures/contributors.json")) {
-      byte[] data = toByteArray(input);
-      mockClient = new MockClient();
-      github = Feign.builder()
-          .decoder(new AssertionDecoder(new GsonDecoder()))
-          .client(mockClient
-              .ok(HttpMethod.GET, "/repos/netflix/feign/contributors", data)
-              .ok(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=55")
-              .ok(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=7 7", new ByteArrayInputStream(data))
-              .ok(HttpMethod.POST, "/repos/netflix/feign/contributors", "{\"login\":\"velo\",\"contributions\":0}")
-              .noContent(HttpMethod.PATCH, "/repos/velo/feign-mock/contributors")
-              .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=1234567890", HttpsURLConnection.HTTP_NOT_FOUND)
-              .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=123456789", HttpsURLConnection.HTTP_INTERNAL_ERROR, new ByteArrayInputStream(data))
-              .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=123456789", HttpsURLConnection.HTTP_INTERNAL_ERROR, "")
-              .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=123456789", HttpsURLConnection.HTTP_INTERNAL_ERROR, data))
-          .target(new MockTarget<>(GitHub.class));
-
-      mockClientSequential = new MockClient(true);
-      githubSequential = Feign.builder()
-          .decoder(new AssertionDecoder(new GsonDecoder()))
-          .client(mockClientSequential
-              .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors", HttpsURLConnection.HTTP_OK, data)
-              .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=55", HttpsURLConnection.HTTP_NOT_FOUND)
-              .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=7 7", HttpsURLConnection.HTTP_INTERNAL_ERROR, new ByteArrayInputStream(data))
-              .add(HttpMethod.GET, "/repos/netflix/feign/contributors", Response.builder()
-                  .status(HttpsURLConnection.HTTP_OK)
-                  .headers(MockClient.EMPTY_HEADERS)
-                  .body(data)))
-          .target(new MockTarget<>(GitHub.class));
-    }
-  }
-
-  @Test
-  public void hitMock() {
-    List<Contributor> contributors = github.contributors("netflix", "feign");
-    assertThat(contributors, hasSize(30));
-    mockClient.verifyStatus();
-  }
-
-  @Test
-  public void missMock() {
-    try {
-      github.contributors("velo", "feign-mock");
-      fail();
-    } catch (FeignException e) {
-      assertThat(e.getMessage(), Matchers.containsString("404"));
-    }
-  }
-
-  @Test
-  public void missHttpMethod() {
-    try {
-      github.patchContributors("netflix", "feign");
-      fail();
-    } catch (FeignException e) {
-      assertThat(e.getMessage(), Matchers.containsString("404"));
-    }
-  }
-
-  @Test
-  public void paramsEncoding() {
-    List<Contributor> contributors = github.contributors("7 7", "netflix", "feign");
-    assertThat(contributors, hasSize(30));
-    mockClient.verifyStatus();
-  }
-
-  @Test
-  public void verifyInvocation() {
-    Contributor contribution = github.create("netflix", "feign", "velo_at_github", "preposterous hacker");
-    // making sure it received a proper response
-    assertThat(contribution, notNullValue());
-    assertThat(contribution.login, equalTo("velo"));
-    assertThat(contribution.contributions, equalTo(0));
-
-    List<Request> results = mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 1);
-    assertThat(results, hasSize(1));
-
-    byte[] body = mockClient.verifyOne(HttpMethod.POST, "/repos/netflix/feign/contributors").body();
-    assertThat(body, notNullValue());
-
-    String message = new String(body);
-    assertThat(message, containsString("velo_at_github"));
-    assertThat(message, containsString("preposterous hacker"));
-
-    mockClient.verifyStatus();
-  }
-
-  @Test
-  public void verifyNone() {
-    github.create("netflix", "feign", "velo_at_github", "preposterous hacker");
-    mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 1);
-
-    try {
-      mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 0);
-      fail();
-    } catch (VerificationAssertionError e) {
-      assertThat(e.getMessage(), containsString("Do not wanted"));
-      assertThat(e.getMessage(), containsString("POST"));
-      assertThat(e.getMessage(), containsString("/repos/netflix/feign/contributors"));
     }
 
-    try {
-      mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 3);
-      fail();
-    } catch (VerificationAssertionError e) {
-      assertThat(e.getMessage(), containsString("Wanted"));
-      assertThat(e.getMessage(), containsString("POST"));
-      assertThat(e.getMessage(), containsString("/repos/netflix/feign/contributors"));
-      assertThat(e.getMessage(), containsString("'3'"));
-      assertThat(e.getMessage(), containsString("'1'"));
+    private GitHub github;
+
+    private GitHub githubSequential;
+
+    private MockClient mockClient;
+
+    private MockClient mockClientSequential;
+
+    @Before
+    public void setup() throws IOException {
+        try (InputStream input = getClass().getResourceAsStream("/fixtures/contributors.json")) {
+            byte[] data = toByteArray(input);
+            mockClient = new MockClient();
+            github = Feign.builder()
+                    .decoder(new AssertionDecoder(new GsonDecoder()))
+                    .client(mockClient
+                            .ok(HttpMethod.GET, "/repos/netflix/feign/contributors", data)
+                            .ok(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=55")
+                            .ok(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=7 7", new ByteArrayInputStream(data))
+                            .ok(HttpMethod.POST, "/repos/netflix/feign/contributors", "{\"login\":\"velo\",\"contributions\":0}")
+                            .noContent(HttpMethod.PATCH, "/repos/velo/feign-mock/contributors")
+                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=1234567890", HttpsURLConnection.HTTP_NOT_FOUND)
+                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=123456789", HttpsURLConnection.HTTP_INTERNAL_ERROR, new ByteArrayInputStream(data))
+                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=123456789", HttpsURLConnection.HTTP_INTERNAL_ERROR, "")
+                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=123456789", HttpsURLConnection.HTTP_INTERNAL_ERROR, data))
+                    .target(new MockTarget<>(GitHub.class));
+
+            mockClientSequential = new MockClient(true);
+            githubSequential = Feign.builder()
+                    .decoder(new AssertionDecoder(new GsonDecoder()))
+                    .client(mockClientSequential
+                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors", HttpsURLConnection.HTTP_OK, data)
+                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=55", HttpsURLConnection.HTTP_NOT_FOUND)
+                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=7 7", HttpsURLConnection.HTTP_INTERNAL_ERROR, new ByteArrayInputStream(data))
+                            .add(HttpMethod.GET, "/repos/netflix/feign/contributors", Response.builder()
+                                    .status(HttpsURLConnection.HTTP_OK)
+                                    .headers(MockClient.EMPTY_HEADERS)
+                                    .body(data)))
+                    .target(new MockTarget<>(GitHub.class));
+        }
     }
-  }
 
-  @Test
-  public void verifyNotInvoked() {
-    mockClient.verifyNever(HttpMethod.POST, "/repos/netflix/feign/contributors");
-    List<Request> results = mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 0);
-    assertThat(results, hasSize(0));
-    try {
-      mockClient.verifyOne(HttpMethod.POST, "/repos/netflix/feign/contributors");
-      fail();
-    } catch (VerificationAssertionError e) {
-      assertThat(e.getMessage(), containsString("Wanted"));
-      assertThat(e.getMessage(), containsString("POST"));
-      assertThat(e.getMessage(), containsString("/repos/netflix/feign/contributors"));
-      assertThat(e.getMessage(), containsString("never invoked"));
+    @Test
+    public void hitMock() {
+        List<Contributor> contributors = github.contributors("netflix", "feign");
+        assertThat(contributors, hasSize(30));
+        mockClient.verifyStatus();
     }
-  }
 
-  @Test
-  public void verifyNegative() {
-    try {
-      mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", -1);
-      fail();
-    } catch (IllegalArgumentException e) {
-      assertThat(e.getMessage(), containsString("non negative"));
+    @Test
+    public void missMock() {
+        try {
+            github.contributors("velo", "feign-mock");
+            fail();
+        } catch (FeignException e) {
+            assertThat(e.getMessage(), Matchers.containsString("404"));
+        }
     }
-  }
 
-  @Test
-  public void verifyMultipleRequests() {
-    mockClient.verifyNever(HttpMethod.POST, "/repos/netflix/feign/contributors");
-
-    github.create("netflix", "feign", "velo_at_github", "preposterous hacker");
-    Request result = mockClient.verifyOne(HttpMethod.POST, "/repos/netflix/feign/contributors");
-    assertThat(result, notNullValue());
-
-    github.create("netflix", "feign", "velo_at_github", "preposterous hacker");
-    List<Request> results = mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 2);
-    assertThat(results, hasSize(2));
-
-    github.create("netflix", "feign", "velo_at_github", "preposterous hacker");
-    results = mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 3);
-    assertThat(results, hasSize(3));
-
-    mockClient.verifyStatus();
-  }
-
-  @Test
-  public void resetRequests() {
-    mockClient.verifyNever(HttpMethod.POST, "/repos/netflix/feign/contributors");
-
-    github.create("netflix", "feign", "velo_at_github", "preposterous hacker");
-    Request result = mockClient.verifyOne(HttpMethod.POST, "/repos/netflix/feign/contributors");
-    assertThat(result, notNullValue());
-
-    mockClient.resetRequests();
-
-    mockClient.verifyNever(HttpMethod.POST, "/repos/netflix/feign/contributors");
-  }
-
-  @Test
-  public void sequentialRequests() throws Exception {
-    githubSequential.contributors("netflix", "feign");
-    try {
-      githubSequential.contributors("55", "netflix", "feign");
-      fail();
-    } catch (FeignException e) {
-      assertThat(e.status(), equalTo(HttpsURLConnection.HTTP_NOT_FOUND));
+    @Test
+    public void missHttpMethod() {
+        try {
+            github.patchContributors("netflix", "feign");
+            fail();
+        } catch (FeignException e) {
+            assertThat(e.getMessage(), Matchers.containsString("404"));
+        }
     }
-    try {
-      githubSequential.contributors("7 7", "netflix", "feign");
-      fail();
-    } catch (FeignException e) {
-      assertThat(e.status(), equalTo(HttpsURLConnection.HTTP_INTERNAL_ERROR));
+
+    @Test
+    public void paramsEncoding() {
+        List<Contributor> contributors = github.contributors("7 7", "netflix", "feign");
+        assertThat(contributors, hasSize(30));
+        mockClient.verifyStatus();
     }
-    githubSequential.contributors("netflix", "feign");
 
-    mockClientSequential.verifyStatus();
-  }
+    @Test
+    public void verifyInvocation() {
+        Contributor contribution = github.create("netflix", "feign", "velo_at_github", "preposterous hacker");
+        // making sure it received a proper response
+        assertThat(contribution, notNullValue());
+        assertThat(contribution.login, equalTo("velo"));
+        assertThat(contribution.contributions, equalTo(0));
 
-  @Test
-  public void sequentialRequestsCalledTooLess() throws Exception {
-    githubSequential.contributors("netflix", "feign");
-    try {
-      mockClientSequential.verifyStatus();
-      fail();
-    } catch (VerificationAssertionError e) {
-      assertThat(e.getMessage(), startsWith("More executions"));
+        List<Request> results = mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 1);
+        assertThat(results, hasSize(1));
+
+        byte[] body = mockClient.verifyOne(HttpMethod.POST, "/repos/netflix/feign/contributors").body();
+        assertThat(body, notNullValue());
+
+        String message = new String(body);
+        assertThat(message, containsString("velo_at_github"));
+        assertThat(message, containsString("preposterous hacker"));
+
+        mockClient.verifyStatus();
     }
-  }
 
-  @Test
-  public void sequentialRequestsCalledTooMany() throws Exception {
-    sequentialRequests();
+    @Test
+    public void verifyNone() {
+        github.create("netflix", "feign", "velo_at_github", "preposterous hacker");
+        mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 1);
 
-    try {
-      githubSequential.contributors("netflix", "feign");
-      fail();
-    } catch (VerificationAssertionError e) {
-      assertThat(e.getMessage(), containsString("excessive"));
+        try {
+            mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 0);
+            fail();
+        } catch (VerificationAssertionError e) {
+            assertThat(e.getMessage(), containsString("Do not wanted"));
+            assertThat(e.getMessage(), containsString("POST"));
+            assertThat(e.getMessage(), containsString("/repos/netflix/feign/contributors"));
+        }
+
+        try {
+            mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 3);
+            fail();
+        } catch (VerificationAssertionError e) {
+            assertThat(e.getMessage(), containsString("Wanted"));
+            assertThat(e.getMessage(), containsString("POST"));
+            assertThat(e.getMessage(), containsString("/repos/netflix/feign/contributors"));
+            assertThat(e.getMessage(), containsString("'3'"));
+            assertThat(e.getMessage(), containsString("'1'"));
+        }
     }
-  }
 
-  @Test
-  public void sequentialRequestsInWrongOrder() throws Exception {
-    try {
-      githubSequential.contributors("7 7", "netflix", "feign");
-      fail();
-    } catch (VerificationAssertionError e) {
-      assertThat(e.getMessage(), startsWith("Expected Request ["));
+    @Test
+    public void verifyNotInvoked() {
+        mockClient.verifyNever(HttpMethod.POST, "/repos/netflix/feign/contributors");
+        List<Request> results = mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 0);
+        assertThat(results, hasSize(0));
+        try {
+            mockClient.verifyOne(HttpMethod.POST, "/repos/netflix/feign/contributors");
+            fail();
+        } catch (VerificationAssertionError e) {
+            assertThat(e.getMessage(), containsString("Wanted"));
+            assertThat(e.getMessage(), containsString("POST"));
+            assertThat(e.getMessage(), containsString("/repos/netflix/feign/contributors"));
+            assertThat(e.getMessage(), containsString("never invoked"));
+        }
     }
-  }
+
+    @Test
+    public void verifyNegative() {
+        try {
+            mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", -1);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertThat(e.getMessage(), containsString("non negative"));
+        }
+    }
+
+    @Test
+    public void verifyMultipleRequests() {
+        mockClient.verifyNever(HttpMethod.POST, "/repos/netflix/feign/contributors");
+
+        github.create("netflix", "feign", "velo_at_github", "preposterous hacker");
+        Request result = mockClient.verifyOne(HttpMethod.POST, "/repos/netflix/feign/contributors");
+        assertThat(result, notNullValue());
+
+        github.create("netflix", "feign", "velo_at_github", "preposterous hacker");
+        List<Request> results = mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 2);
+        assertThat(results, hasSize(2));
+
+        github.create("netflix", "feign", "velo_at_github", "preposterous hacker");
+        results = mockClient.verifyTimes(HttpMethod.POST, "/repos/netflix/feign/contributors", 3);
+        assertThat(results, hasSize(3));
+
+        mockClient.verifyStatus();
+    }
+
+    @Test
+    public void resetRequests() {
+        mockClient.verifyNever(HttpMethod.POST, "/repos/netflix/feign/contributors");
+
+        github.create("netflix", "feign", "velo_at_github", "preposterous hacker");
+        Request result = mockClient.verifyOne(HttpMethod.POST, "/repos/netflix/feign/contributors");
+        assertThat(result, notNullValue());
+
+        mockClient.resetRequests();
+
+        mockClient.verifyNever(HttpMethod.POST, "/repos/netflix/feign/contributors");
+    }
+
+    @Test
+    public void sequentialRequests() throws Exception {
+        githubSequential.contributors("netflix", "feign");
+        try {
+            githubSequential.contributors("55", "netflix", "feign");
+            fail();
+        } catch (FeignException e) {
+            assertThat(e.status(), equalTo(HttpsURLConnection.HTTP_NOT_FOUND));
+        }
+        try {
+            githubSequential.contributors("7 7", "netflix", "feign");
+            fail();
+        } catch (FeignException e) {
+            assertThat(e.status(), equalTo(HttpsURLConnection.HTTP_INTERNAL_ERROR));
+        }
+        githubSequential.contributors("netflix", "feign");
+
+        mockClientSequential.verifyStatus();
+    }
+
+    @Test
+    public void sequentialRequestsCalledTooLess() throws Exception {
+        githubSequential.contributors("netflix", "feign");
+        try {
+            mockClientSequential.verifyStatus();
+            fail();
+        } catch (VerificationAssertionError e) {
+            assertThat(e.getMessage(), startsWith("More executions"));
+        }
+    }
+
+    @Test
+    public void sequentialRequestsCalledTooMany() throws Exception {
+        sequentialRequests();
+
+        try {
+            githubSequential.contributors("netflix", "feign");
+            fail();
+        } catch (VerificationAssertionError e) {
+            assertThat(e.getMessage(), containsString("excessive"));
+        }
+    }
+
+    @Test
+    public void sequentialRequestsInWrongOrder() throws Exception {
+        try {
+            githubSequential.contributors("7 7", "netflix", "feign");
+            fail();
+        } catch (VerificationAssertionError e) {
+            assertThat(e.getMessage(), startsWith("Expected Request ["));
+        }
+    }
 
 }
