@@ -7,17 +7,17 @@ image:https://img.shields.io/github/issues/velo/feign-mock.svg["Issues", link="h
 image:https://img.shields.io/github/forks/velo/feign-mock.svg["Forks", link="https://github.com/velo/feign-mock/network"]
 image:https://img.shields.io/github/stars/velo/feign-mock.svg["Stars", link="https://github.com/velo/feign-mock/stargazers"]
 
-An easy way to test https://github.com/Netflix/feign.  Since using feign most of the logic is store into annotations this helps to check if the annotations are right.
+An easy way to test https://github.com/Netflix/feign. Since feign stores most of the logic in annotations, this helps to check if the annotations are correct.
 
-Original article available https://velo.github.io/2016/06/05/Testing-feign-clients.html[here]
+The original article is available https://velo.github.io/2016/06/05/Testing-feign-clients.html[here]
 
-If mocking feign clients is easy, testing the logic written in annotations is everything but!
+If mocking feign clients is easy, testing the logic written in annotations is not!
 
-To check if you are parsing the request/response properly the only way it firing a real request.  Well, that doesn't seem to be a good path to unit (or even integration) test remote services.  Any IO change will affect test stability.
+To check if you are parsing the request/response properly, the only way is firing a real request. Well, that doesn't seem to be a good path to unit (or even integration) test remote services. Any IO change will affect test stability.
 
-That is why I create https://github.com/velo/feign-mock[feign-mock].
+That is why I created https://github.com/velo/feign-mock[feign-mock].
 
-With feign-mock you can using pre-loaded json strings or streams as content for your responses.  It also allow you to verify mock invokation and feign-mock will hit your annotations to make sure everything works.
+With feign-mock you can use pre-loaded JSON strings or streams as content for your responses. It also allows you to verify mocked invocations and feign-mock will hit your annotations to make sure everything works.
 
 ##### Example
 
@@ -36,6 +36,11 @@ With feign-mock you can using pre-loaded json strings or streams as content for 
         .target(new MockTarget<>(GitHub.class));
   }
 
+  @After
+  public void tearDown() {
+    mockClient.verifyStatus();
+  }
+
   @Test
   public void missHttpMethod() {
     List<Contributor> result = github.patchContributors("velo", "feign-mock");
@@ -44,8 +49,8 @@ With feign-mock you can using pre-loaded json strings or streams as content for 
   }
 ```
 
-This simple test returns no content and verify if the url was trully invoked.
+This simple test returns no content and verifies that the URL was truly invoked.
 
-On mock client, you can include all urls and methods you wanna mock.
+On the mocked client, you can include all URLs and methods you want to mock.
 
-For a more compreensive example take a look at https://github.com/velo/feign-mock/blob/master/src/test/java/feign/mock/MockClientTest.java[MockClientTest].
+For more comprehensive examples take a look at https://github.com/velo/feign-mock/blob/master/src/test/java/feign/mock/MockClientTest.java[MockClientTest].

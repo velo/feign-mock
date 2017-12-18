@@ -15,45 +15,158 @@
  */
 package feign.mock;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Objects;
+
+import feign.Request;
+import feign.Util;
+
 public class RequestKey {
 
-    private final HttpMethod method;
+  public static class Builder {
 
-    private final String url;
+    private HttpMethod method;
 
-    public RequestKey(HttpMethod method, String url) {
-        super();
-        this.method = method;
-        this.url = url;
+    private String url;
+
+    private Map<String, Collection<String>> headers;
+
+    private Charset charset;
+
+    private byte[] body;
+
+    private Builder(HttpMethod method, String url) {
+      this.method = method;
+      this.url = url;
     }
 
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 7;
-        result = prime * result + method.hashCode();
-        return result;
+    public Builder headers(Map<String, Collection<String>> headers) {
+      this.headers = headers;
+      return this;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        RequestKey other = (RequestKey) obj;
-        if (method != other.method)
-            return false;
-        if (!url.equals(other.url))
-            return false;
-        return true;
+    public Builder charset(Charset charset) {
+      this.charset = charset;
+      return this;
     }
 
-    @Override
-    public String toString() {
-        return "Request [" + method + ": " + url + "]";
+    public Builder body(String body) {
+      return body(body.getBytes(StandardCharsets.UTF_8));
     }
+
+    public Builder body(byte[] body) {
+      this.body = body;
+      return this;
+    }
+
+    public RequestKey build() {
+      RequestKey requestKey = new RequestKey();
+      requestKey.method = method;
+      requestKey.url = url;
+      requestKey.headers = headers;
+      requestKey.charset = charset;
+      requestKey.body = body;
+      return requestKey;
+    }
+
+  }
+
+  public static Builder builder(HttpMethod method, String url) {
+    return new Builder(method, url);
+  }
+
+  public static RequestKey create(Request request) {
+    RequestKey requestKey = new RequestKey();
+    requestKey.method = HttpMethod.valueOf(request.method());
+    requestKey.url = buildUrl(request);
+    requestKey.headers = request.headers();
+    requestKey.charset = request.charset();
+    requestKey.body = request.body();
+    return requestKey;
+  }
+
+  private static String buildUrl(Request request) {
+    try {
+      return URLDecoder.decode(request.url(), Util.UTF_8.name());
+    } catch (UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private HttpMethod method;
+
+  private String url;
+
+  private Map<String, Collection<String>> headers;
+
+  private Charset charset;
+
+  private byte[] body;
+
+  private RequestKey() {
+  }
+
+  public HttpMethod getMethod() {
+    return method;
+  }
+
+  public String getUrl() {
+    return url;
+  }
+
+  public Map<String, Collection<String>> getHeaders() {
+    return headers;
+  }
+
+  public Charset getCharset() {
+    return charset;
+  }
+
+  public byte[] getBody() {
+    return body;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(method, url);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+
+    RequestKey other = (RequestKey) obj;
+    return Objects.equals(other.method, method) && Objects.equals(other.url, url);
+  }
+
+  public boolean equalsExtended(Object obj) {
+    if (equals(obj)) {
+      RequestKey other = (RequestKey) obj;
+      boolean headersEqual = other.headers == null || headers == null || Objects.equals(other.headers, headers);
+      boolean charsetEqual = other.charset == null || charset == null || Objects.equals(other.charset, charset);
+      boolean bodyEqual = other.body == null || body == null || Arrays.equals(other.body, body);
+      return headersEqual && charsetEqual && bodyEqual;
+    }
+    return false;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("Request [%s %s: %s headers and %s]",
+        method, url,
+        headers == null ? "without" : "with " + headers.size(),
+        charset == null ? "no charset" : "charset " + charset);
+  }
 
 }
