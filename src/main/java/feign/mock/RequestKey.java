@@ -31,9 +31,9 @@ public class RequestKey {
 
     public static class Builder {
 
-        private HttpMethod method;
+        private final HttpMethod method;
 
-        private String url;
+        private final String url;
 
         private Map<String, Collection<String>> headers;
 
@@ -66,13 +66,7 @@ public class RequestKey {
         }
 
         public RequestKey build() {
-            RequestKey requestKey = new RequestKey();
-            requestKey.method = method;
-            requestKey.url = url;
-            requestKey.headers = headers;
-            requestKey.charset = charset;
-            requestKey.body = body;
-            return requestKey;
+            return new RequestKey(this);
         }
 
     }
@@ -82,13 +76,7 @@ public class RequestKey {
     }
 
     public static RequestKey create(Request request) {
-        RequestKey requestKey = new RequestKey();
-        requestKey.method = HttpMethod.valueOf(request.method());
-        requestKey.url = buildUrl(request);
-        requestKey.headers = request.headers();
-        requestKey.charset = request.charset();
-        requestKey.body = request.body();
-        return requestKey;
+        return new RequestKey(request);
     }
 
     private static String buildUrl(Request request) {
@@ -99,17 +87,30 @@ public class RequestKey {
         }
     }
 
-    private HttpMethod method;
+    private final HttpMethod method;
 
-    private String url;
+    private final String url;
 
-    private Map<String, Collection<String>> headers;
+    private final Map<String, Collection<String>> headers;
 
-    private Charset charset;
+    private final Charset charset;
 
-    private byte[] body;
+    private final byte[] body;
 
-    private RequestKey() {
+    private RequestKey(Builder builder) {
+        this.method = builder.method;
+        this.url = builder.url;
+        this.headers = builder.headers;
+        this.charset = builder.charset;
+        this.body = builder.body;
+    }
+
+    private RequestKey(Request request) {
+        this.method = HttpMethod.valueOf(request.method());
+        this.url = buildUrl(request);
+        this.headers = request.headers();
+        this.charset = request.charset();
+        this.body = request.body();
     }
 
     public HttpMethod getMethod() {

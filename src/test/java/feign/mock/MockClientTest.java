@@ -21,7 +21,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
@@ -95,11 +94,7 @@ public class MockClientTest {
 
     private GitHub github;
 
-    private GitHub githubSequential;
-
     private MockClient mockClient;
-
-    private MockClient mockClientSequential;
 
     @Before
     public void setup() throws IOException {
@@ -114,23 +109,10 @@ public class MockClientTest {
                             .ok(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=7 7", new ByteArrayInputStream(data))
                             .ok(HttpMethod.POST, "/repos/netflix/feign/contributors", "{\"login\":\"velo\",\"contributions\":0}")
                             .noContent(HttpMethod.PATCH, "/repos/velo/feign-mock/contributors")
-                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=1234567890", HttpsURLConnection.HTTP_NOT_FOUND)
-                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=123456789", HttpsURLConnection.HTTP_INTERNAL_ERROR, new ByteArrayInputStream(data))
-                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=123456789", HttpsURLConnection.HTTP_INTERNAL_ERROR, "")
-                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=123456789", HttpsURLConnection.HTTP_INTERNAL_ERROR, data))
-                    .target(new MockTarget<>(GitHub.class));
-
-            mockClientSequential = new MockClient(true);
-            githubSequential = Feign.builder()
-                    .decoder(new AssertionDecoder(new GsonDecoder()))
-                    .client(mockClientSequential
-                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors", HttpsURLConnection.HTTP_OK, data)
-                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=55", HttpsURLConnection.HTTP_NOT_FOUND)
-                            .notOk(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=7 7", HttpsURLConnection.HTTP_INTERNAL_ERROR, new ByteArrayInputStream(data))
-                            .add(HttpMethod.GET, "/repos/netflix/feign/contributors", Response.builder()
-                                    .status(HttpsURLConnection.HTTP_OK)
-                                    .headers(MockClient.EMPTY_HEADERS)
-                                    .body(data)))
+                            .add(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=1234567890", HttpsURLConnection.HTTP_NOT_FOUND)
+                            .add(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=123456789", HttpsURLConnection.HTTP_INTERNAL_ERROR, new ByteArrayInputStream(data))
+                            .add(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=123456789", HttpsURLConnection.HTTP_INTERNAL_ERROR, "")
+                            .add(HttpMethod.GET, "/repos/netflix/feign/contributors?client_id=123456789", HttpsURLConnection.HTTP_INTERNAL_ERROR, data))
                     .target(new MockTarget<>(GitHub.class));
         }
     }
@@ -272,59 +254,6 @@ public class MockClientTest {
         mockClient.resetRequests();
 
         mockClient.verifyNever(HttpMethod.POST, "/repos/netflix/feign/contributors");
-    }
-
-    @Test
-    public void sequentialRequests() throws Exception {
-        githubSequential.contributors("netflix", "feign");
-        try {
-            githubSequential.contributors("55", "netflix", "feign");
-            fail();
-        } catch (FeignException e) {
-            assertThat(e.status(), equalTo(HttpsURLConnection.HTTP_NOT_FOUND));
-        }
-        try {
-            githubSequential.contributors("7 7", "netflix", "feign");
-            fail();
-        } catch (FeignException e) {
-            assertThat(e.status(), equalTo(HttpsURLConnection.HTTP_INTERNAL_ERROR));
-        }
-        githubSequential.contributors("netflix", "feign");
-
-        mockClientSequential.verifyStatus();
-    }
-
-    @Test
-    public void sequentialRequestsCalledTooLess() throws Exception {
-        githubSequential.contributors("netflix", "feign");
-        try {
-            mockClientSequential.verifyStatus();
-            fail();
-        } catch (VerificationAssertionError e) {
-            assertThat(e.getMessage(), startsWith("More executions"));
-        }
-    }
-
-    @Test
-    public void sequentialRequestsCalledTooMany() throws Exception {
-        sequentialRequests();
-
-        try {
-            githubSequential.contributors("netflix", "feign");
-            fail();
-        } catch (VerificationAssertionError e) {
-            assertThat(e.getMessage(), containsString("excessive"));
-        }
-    }
-
-    @Test
-    public void sequentialRequestsInWrongOrder() throws Exception {
-        try {
-            githubSequential.contributors("7 7", "netflix", "feign");
-            fail();
-        } catch (VerificationAssertionError e) {
-            assertThat(e.getMessage(), startsWith("Expected Request ["));
-        }
     }
 
 }

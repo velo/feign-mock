@@ -37,9 +37,9 @@ public class MockClient implements Client {
 
     class RequestResponse {
 
-        private RequestKey requestKey;
+        private final RequestKey requestKey;
 
-        private Response.Builder responseBuilder;
+        private final Response.Builder responseBuilder;
 
         public RequestResponse(RequestKey requestKey, Response.Builder responseBuilder) {
             this.requestKey = requestKey;
@@ -128,30 +128,6 @@ public class MockClient implements Client {
         return responseBuilder;
     }
 
-    /**
-     * @param response
-     * <ul>
-     *   <li>the status defaults to 0, not 200!</li>
-     *   <li>the internal feign-code requires the headers to be set</li>
-     * </ul>
-     */
-    public MockClient add(HttpMethod method, String url, Response.Builder response) {
-        return add(RequestKey.builder(method, url).build(), response);
-    }
-
-    public MockClient add(RequestKey requestKey, Response.Builder response) {
-        responses.add(new RequestResponse(requestKey, response));
-        return this;
-    }
-
-    private MockClient add(RequestKey requestKey, int status, byte[] responseBody) {
-        return add(requestKey, Response.builder()
-                .status(status)
-                .reason("Mocked")
-                .headers(EMPTY_HEADERS)
-                .body(responseBody));
-    }
-
     public MockClient ok(HttpMethod method, String url, InputStream responseBody) throws IOException {
         return ok(RequestKey.builder(method, url).build(), responseBody);
     }
@@ -184,40 +160,60 @@ public class MockClient implements Client {
         return ok(requestKey, (byte[]) null);
     }
 
-    public MockClient notOk(HttpMethod method, String url, int status, InputStream responseBody) throws IOException {
-        return notOk(RequestKey.builder(method, url).build(), status, responseBody);
+    public MockClient add(HttpMethod method, String url, int status, InputStream responseBody) throws IOException {
+        return add(RequestKey.builder(method, url).build(), status, responseBody);
     }
 
-    public MockClient notOk(HttpMethod method, String url, int status, String responseBody) {
-        return notOk(RequestKey.builder(method, url).build(), status, responseBody);
+    public MockClient add(HttpMethod method, String url, int status, String responseBody) {
+        return add(RequestKey.builder(method, url).build(), status, responseBody);
     }
 
-    public MockClient notOk(HttpMethod method, String url, int status, byte[] responseBody) {
-        return notOk(RequestKey.builder(method, url).build(), status, responseBody);
+    public MockClient add(HttpMethod method, String url, int status, byte[] responseBody) {
+        return add(RequestKey.builder(method, url).build(), status, responseBody);
     }
 
-    public MockClient notOk(HttpMethod method, String url, int status) {
-        return notOk(RequestKey.builder(method, url).build(), status);
+    public MockClient add(HttpMethod method, String url, int status) {
+        return add(RequestKey.builder(method, url).build(), status);
     }
 
-    public MockClient notOk(RequestKey requestKey, int status, InputStream responseBody) throws IOException {
-        return notOk(requestKey, status, Util.toByteArray(responseBody));
+    /**
+     * @param response
+     * <ul>
+     *   <li>the status defaults to 0, not 200!</li>
+     *   <li>the internal feign-code requires the headers to be set</li>
+     * </ul>
+     */
+    public MockClient add(HttpMethod method, String url, Response.Builder response) {
+        return add(RequestKey.builder(method, url).build(), response);
     }
 
-    public MockClient notOk(RequestKey requestKey, int status, String responseBody) {
-        return notOk(requestKey, status, responseBody.getBytes(StandardCharsets.UTF_8));
+    public MockClient add(RequestKey requestKey, int status, InputStream responseBody) throws IOException {
+        return add(requestKey, status, Util.toByteArray(responseBody));
     }
 
-    public MockClient notOk(RequestKey requestKey, int status, byte[] responseBody) {
-        return add(requestKey, status, responseBody);
+    public MockClient add(RequestKey requestKey, int status, String responseBody) {
+        return add(requestKey, status, responseBody.getBytes(StandardCharsets.UTF_8));
     }
 
-    public MockClient notOk(RequestKey requestKey, int status) {
-        return notOk(requestKey, status, (byte[]) null);
+    public MockClient add(RequestKey requestKey, int status, byte[] responseBody) {
+        return add(requestKey, Response.builder()
+                .status(status)
+                .reason("Mocked")
+                .headers(EMPTY_HEADERS)
+                .body(responseBody));
+    }
+
+    public MockClient add(RequestKey requestKey, int status) {
+        return add(requestKey, status, (byte[]) null);
+    }
+
+    public MockClient add(RequestKey requestKey, Response.Builder response) {
+        responses.add(new RequestResponse(requestKey, response));
+        return this;
     }
 
     public MockClient noContent(HttpMethod method, String url) {
-        return notOk(method, url, HttpURLConnection.HTTP_NO_CONTENT);
+        return add(method, url, HttpURLConnection.HTTP_NO_CONTENT);
     }
 
     public Request verifyOne(HttpMethod method, String url) {
